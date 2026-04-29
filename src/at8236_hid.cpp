@@ -110,6 +110,9 @@ auto AT8236HID::_start(uint32_t duration) -> void
     analogWrite(_in2_pin, LOW);
 
     _rewarding = true;
+    _flow_pulse_count.store(0, std::memory_order_relaxed);
+    _flow_counting_.store(false, std::memory_order_relaxed);
+    const uint32_t count_start_ms = millis() + 50;
 
     if (duration == 0)
     {
@@ -117,6 +120,11 @@ auto AT8236HID::_start(uint32_t duration) -> void
         {
             constexpr uint32_t check_interval_ms = 100;
             vTaskDelay(pdMS_TO_TICKS(check_interval_ms));
+
+            if (!this->_flow_counting_.load(std::memory_order_relaxed) && millis() >= count_start_ms)
+            {
+                this->_flow_counting_.store(true, std::memory_order_relaxed);
+            }
 
             if (stop_request_.load())
             {
@@ -136,6 +144,11 @@ auto AT8236HID::_start(uint32_t duration) -> void
             const uint32_t delay_time = std::min(check_interval_ms, remaining_time);
 
             vTaskDelay(pdMS_TO_TICKS(delay_time));
+
+            if (!this->_flow_counting_.load(std::memory_order_relaxed) && millis() >= count_start_ms)
+            {
+                this->_flow_counting_.store(true, std::memory_order_relaxed);
+            }
 
             if (stop_request_.load())
             {
@@ -192,6 +205,25 @@ auto AT8236HID::stop(bool all) -> void
         _rewarding = false;
         stop_request_.store(true);
     }
+    _flow_counting_.store(false, std::memory_order_relaxed);
+}
+
+auto AT8236HID::increment_flow_pulse_count() -> void
+{
+    if (_flow_counting_.load(std::memory_order_relaxed))
+    {
+        _flow_pulse_count.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+auto AT8236HID::get_flow_pulse_count() const -> uint32_t
+{
+    return _flow_pulse_count.load(std::memory_order_relaxed);
+}
+
+auto AT8236HID::is_flow_counting() const -> bool
+{
+    return _flow_counting_.load(std::memory_order_relaxed);
 }
 
 auto AT8236HID::reverse() -> void
@@ -284,6 +316,11 @@ auto AT8236HID::_onGetFeature(uint8_t report_id, uint8_t *buffer, uint16_t len) 
         fea.payload.wifi_info.password_len = _config.wifi.password.length();
         memcpy(fea.payload.wifi_info.ssid, _config.wifi.ssid.c_str(), fea.payload.wifi_info.ssid_len);
         memcpy(fea.payload.wifi_info.password, _config.wifi.password.c_str(), fea.payload.wifi_info.password_len);
+        break;
+
+    case get_feature_cmd_t::GET_FLOW_PULSE:
+        fea.device_id = this->_device_id;
+        fea.payload.flow_pulse_count = this->get_flow_pulse_count();
         break;
 
     default:

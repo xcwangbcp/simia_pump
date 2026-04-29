@@ -19,6 +19,7 @@ enum class get_feature_cmd_t : uint8_t
 {
     GET_DEVICE_ID = 0x01,
     GET_WIFI = 0x02,
+    GET_FLOW_PULSE = 0x03,
 };
 
 // HID Features
@@ -42,6 +43,7 @@ union feature_payload_t
     wifi_info_t wifi_info;
     device_info_t device_info;
     simia::start_mode_t start_mode;
+    uint32_t flow_pulse_count;
     uint8_t data[62];
 };
 
@@ -176,6 +178,8 @@ private:
     // Running control
     bool _rewarding{false};
     std::atomic<bool> stop_request_{false};
+    std::atomic<bool> _flow_counting_{false};
+    std::atomic<uint32_t> _flow_pulse_count{0};
 
     QueueHandle_t _task_queue{};
 
@@ -200,6 +204,10 @@ public:
 
     auto set_speed(uint32_t speed) -> void;
     auto set_device_info(uint8_t device_id, String device_nickname) -> void;
+
+    auto increment_flow_pulse_count() -> void;
+    auto get_flow_pulse_count() const -> uint32_t;
+    auto is_flow_counting() const -> bool;
 
     auto begin() -> void;
     auto _onGetDescriptor(uint8_t *buffer) -> uint16_t;

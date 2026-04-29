@@ -19,6 +19,11 @@ simia::config_t config{};
 
 AT8236HID pump(first_pin, second_pin, 1.0f, config);
 
+static void IRAM_ATTR water_pulse_isr()
+{
+    pump.increment_flow_pulse_count();
+}
+
 // Callback for button events
 static void start()
 {
@@ -179,6 +184,9 @@ void active_ota_start(simia::config_t config)
 void setup()
 {
     config = simia::load_config();
+
+    pinMode(water_pulse_pin, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(static_cast<int>(water_pulse_pin)), water_pulse_isr, RISING);
 
     switch (config.start_mode)
     {

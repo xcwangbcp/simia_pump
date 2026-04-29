@@ -13,6 +13,9 @@ constexpr const gpio_num_t start_pin{GPIO_NUM_35};
 constexpr const gpio_num_t stop_pin{GPIO_NUM_36};
 constexpr const gpio_num_t reverse_pin{GPIO_NUM_37};
 
+// water flow meter
+constexpr const gpio_num_t water_pulse_pin{GPIO_NUM_6};
+
 namespace simia
 {
 // WiFi Config
